@@ -1,1 +1,1 @@
-# currency-forum-admin
+# CurrencyExchangeApp

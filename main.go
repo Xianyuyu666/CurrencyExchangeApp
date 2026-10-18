@@ -2,11 +2,19 @@ package main
 
 import (
 	"ExchangeApp/config"
-	"fmt"
+	"ExchangeApp/router"
 )
 
 func main() {
+	//初始化配置
 	config.InitConfig()
+	//获取路由
+	r := router.SetupRouter()
 
-	fmt.Println(config.AppConfig.App.Port)
+	port := config.AppConfig.App.Port
+	if port == ""{
+		port = ":8080"
+	}
+
+	r.Run(config.AppConfig.App.Port)
 }
