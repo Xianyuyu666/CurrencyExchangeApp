@@ -12,9 +12,10 @@ func main() {
 	r := router.SetupRouter()
 
 	port := config.AppConfig.App.Port
-	if port == ""{
+	if port == "" {
 		port = ":8080"
 	}
 
+	//启动服务器
 	r.Run(config.AppConfig.App.Port)
 }

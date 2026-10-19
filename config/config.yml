@@ -3,8 +3,6 @@ app:
   port: :3000
 
 database:
-  host: localhost
-  port: 3306
-  user: your_username
-  passport: your_passport
-  name: currency_exchange_db
+  dsn : "root:848617@tcp(127.0.0.1:3306)/go_db?charset=utf8mb4&parseTime=True&loc=Local"
+  MaxIdleConns : 10
+  MaxOpenConns : 100
