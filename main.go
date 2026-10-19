@@ -6,16 +6,17 @@ import (
 )
 
 func main() {
-	//初始化配置
+	// 初始化配置
 	config.InitConfig()
-	//获取路由
+	// 初始化路由，获取引擎
 	r := router.SetupRouter()
 
+	// 设置port默认值，防止为空
 	port := config.AppConfig.App.Port
 	if port == "" {
 		port = ":8080"
 	}
 
-	//启动服务器
+	// 启动服务器
 	r.Run(config.AppConfig.App.Port)
 }
