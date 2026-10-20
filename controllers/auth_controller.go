@@ -3,6 +3,7 @@ package controllers
 import (
 	"ExchangeApp/global"
 	"ExchangeApp/models"
+	"ExchangeApp/utils"
 	"errors"
 	"log"
 	"net/http"
@@ -31,8 +32,16 @@ func Register(ctx *gin.Context) {
 	err := global.Db.Where("username = ?", req.Username).First(&user).Error
 
 	// 用户不存在，可以创建
-	if errors.Is(err, gorm.ErrRecordNotFound){
-		user = models.User{Username: req.Username, Password: req.Password}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// Bcrypt加密
+		hashedPwd, err := utils.HashPassword(req.Password)
+		if err != nil {
+			log.Println("HashPassword error", err.Error())
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		// 数据库创建用户
+		user = models.User{Username: req.Username, Password: hashedPwd}
 		if err := global.Db.Create(&user).Error; err != nil {
 			log.Println("Db.Create error:", err.Error())
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -71,8 +80,9 @@ func Login(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
 	// 用户不存在或者密码错误
-	if errors.Is(err, gorm.ErrRecordNotFound) || user.Password != req.Password {
+	if errors.Is(err, gorm.ErrRecordNotFound) || !utils.CheckPassword(user.Password, req.Password) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 		return
 	}
