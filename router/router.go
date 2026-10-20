@@ -2,6 +2,7 @@ package router
 
 import (
 	"ExchangeApp/controllers"
+	"ExchangeApp/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,6 +17,10 @@ func SetupRouter() *gin.Engine {
 	{
 		auth.POST("/login", controllers.Login)
 		auth.POST("/register", controllers.Register)
+	}
+	user := r.Group("/api/user", middleware.JWTAuth())
+	{
+		user.GET("/info", controllers.Info)
 	}
 
 	return r

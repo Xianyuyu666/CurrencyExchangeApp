@@ -17,6 +17,10 @@ type Config struct {
 		MaxIdleConns int
 		MaxOpenConns int
 	}
+	Jwt struct {
+		Secret      string
+		ExpireHours int
+	}
 }
 
 // AppConfig 全局配置单例
