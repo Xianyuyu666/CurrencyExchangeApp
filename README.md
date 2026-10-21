@@ -36,12 +36,15 @@ CurrencyExchangeApp/
 │   ├── config_example.yml   # 配置模板复制为 config.yml 使用
 │   └── db.go                # 数据库初始化：连接池 + Ping + AutoMigrate
 ├── models/
+│   ├── article_like.go      # 文章点赞模型
+│   ├── article.go           # 文章模型
 │   ├── user.go              # 用户模型
 │   └── exchange_rate.go     # 汇率模型
 ├── controllers/
+│   ├── article_controller.go # 文章处理
 │   ├── auth_controller.go   # 注册 / 登录
 │   ├── user_controller.go   # 获取用户信息
-│   └── rate_controller.go   # 创建汇率
+│   └── rate_controller.go   # 汇率处理
 ├── middleware/
 │   └── auth.go              # JWT 鉴权中间件
 ├── utils/
@@ -177,23 +180,113 @@ POST /api/exchangerate/add
 }
 ```
 
+> `date` 为日期字符串（如 `2026-10-21`）；货币代码大小写不敏感（服务端自动统一为大写）。同一货币对同一天只能创建一条（组合唯一索引兜底）。
+
 | 场景 | 状态码 | 响应 |
 |---|---|---|
 | 创建成功 | 200 | `{"message": "Create Success"}` |
 | 请求体不合法 | 400 | `{"error": "invalid request body"}` |
 | 已存在 | 409 | `{"error": "exchange rate already exists"}` |
 
-### 5.查询汇率
+### 5. 查询汇率
 
 ```
-GET /api/exchangerate/query?from=...&to=...&date=...
+GET /api/exchangerate/query?from=USD&to=CNY&date=2026-10-21
+```
+
+查询参数：`from`（必填）、`to`（必填）、`date`（必填）。
+
+| 场景 | 状态码 | 响应 |
+|---|---|---|
+| 查询成功 | 200 | `{"from_currency": "USD", "to_currency": "CNY", "rate": 7.25, "date": "2026-10-21"}` |
+| 参数不合法 | 400 | `{"error": "invalid query parameters"}` |
+| 查不到 | 404 | `{"error": "exchange rate not found"}` |
+
+### 6. 发布文章（需登录）
+
+```
+POST /api/article/create
+```
+
+请求头：
+
+```
+Authorization: Bearer eyJhbGci...
+```
+
+请求体：
+
+```json
+{
+  "title": "my first article",
+  "content": "hello world"
+}
+```
+
+校验规则：`title` 必填、长度 1-200；`content` 必填。
+
+| 场景 | 状态码 | 响应 |
+|---|---|---|
+| 发布成功 | 200 | `{"message": "Create Success", "id": 1}` |
+| 请求体不合法 | 400 | `{"error": "invalid request body"}` |
+| 未携带 token | 401 | `{"error": "missing token"}` |
+| token 格式错误 | 401 | `{"error": "invalid token format"}` |
+| token 无效 / 过期 | 401 | `{"error": "invalid or expired token"}` |
+| 服务器内部异常 | 500 | `{"error": "server error"}` |
+
+### 7. 文章列表（支持搜索、分页）
+
+```
+GET /api/article?keyword=汇率&page=1&pagesize=10
+```
+
+查询参数（均可选）：
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `keyword` | 空 | 标题模糊匹配（包含即命中），空则查全部 |
+| `page` | 1 | 页码，从 1 开始 |
+| `pagesize` | 10 | 每页条数，最大 100 |
+
+响应示例：
+
+```json
+{
+  "list": [
+    {
+      "ID": 1,
+      "CreatedAt": "2026-10-21T10:00:00+08:00",
+      "title": "Go入门",
+      "content": "...",
+      "user_id": 1,
+      "author": { "ID": 1, "username": "tom" },
+      "like_count": 3
+    }
+  ],
+  "total": 1
+}
+```
+
+> `list` 按发布时间倒序；`author` 只包含 `id` 和 `username`（不含密码）；`total` 为符合筛选条件的文章总数（分页用）。
+
+| 场景 | 状态码 | 响应 |
+|---|---|---|
+| 成功 | 200 | `{"list": [...], "total": N}` |
+| 参数不合法 | 400 | `{"error": "invalid query parameters"}` |
+| 服务器内部异常 | 500 | `{"error": "server error"}` |
+
+### 8. 文章详情
+
+```
+GET /api/article/:id
 ```
 
 | 场景 | 状态码 | 响应 |
 |---|---|---|
-|查询成功|200|`{"from_currency": "USD", "to_currency": ...`
-|参数不合法|400|`{"error":"invalid query parameters"}`
-|查不到|404|`{"error":"exchange rate not found"}`
+| 查询成功 | 200 | `{"id": 1, "title": "Go入门", "content": "...", "likecount": 3, "author": {"ID": 1, "username": "tom"}, "created_at": "..."}` |
+| id 不合法 | 400 | `{"error": "invalid id"}` |
+| 文章不存在 | 404 | `{"error": "article not found"}` |
+| 服务器内部异常 | 500 | `{"error": "server error"}` |
 
 
 ## 安全设计

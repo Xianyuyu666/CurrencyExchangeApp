@@ -3,8 +3,10 @@ package controllers
 import (
 	"ExchangeApp/global"
 	"ExchangeApp/models"
+	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -101,4 +103,43 @@ func ListArticles(ctx *gin.Context) {
 
 	// 成功返回文章全部信息，关联的用户信息只有id和username，再返回一个查到文章总数
 	ctx.JSON(http.StatusOK, gin.H{"list": list, "total": total})
+}
+
+// GetArticle 获取指定id的文章
+func GetArticle(ctx *gin.Context) {
+	// 从URL中获取信息
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	// 查询
+	var article models.Article
+	err = global.Db.Preload("Author", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id, username")
+	}).First(&article, id).Error
+
+	// 查不到
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "article not found"})
+		return
+	}
+	// 数据库错误
+	if err != nil {
+		log.Println("Db.First error:", err.Error())
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+		return
+	}
+
+	// 成功返回文章信息加部分作者信息
+	ctx.JSON(http.StatusOK, gin.H{
+		"id":         article.ID,
+		"title":      article.Title,
+		"content":    article.Content,
+		"likecount":  article.LikeCount,
+		"author":     article.Author,
+		"created_at": article.CreatedAt,
+	})
 }

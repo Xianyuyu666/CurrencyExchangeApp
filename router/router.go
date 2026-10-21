@@ -31,10 +31,11 @@ func SetupRouter() *gin.Engine {
 		exchangeRate.GET("/query", controllers.Query)
 	}
 	// 文章相关
-	article := r.Group("api/article")
+	article := r.Group("/api/article")
 	{
 		article.POST("/create", middleware.JWTAuth(), controllers.CreateArticle)
 		article.GET("", controllers.ListArticles)
+		article.GET("/:id", controllers.GetArticle)
 	}
 
 	return r
