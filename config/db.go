@@ -42,6 +42,12 @@ func initDB() {
 	if err := db.AutoMigrate(&models.ExchangeRate{}); err != nil {
 		log.Fatalf("AutoMigrate ExchangeRate error: %v", err)
 	}
+	if err := db.AutoMigrate(&models.Article{}); err != nil {
+		log.Fatalf("AutoMigrate Article error: %v", err)
+	}
+	if err := db.AutoMigrate(&models.ArticleLike{}); err != nil {
+		log.Fatalf("AutoMigrate ArticleLike error: %v", err)
+	}
 
 	// 将GORM实列挂到全局变量，供其他模块使用
 	global.Db = db
