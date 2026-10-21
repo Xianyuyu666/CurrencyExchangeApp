@@ -14,22 +14,23 @@ import (
 // Info 用户获取自身信息HandleFunc
 func Info(ctx *gin.Context) {
 	// 获取用户信息
-	usernameVal, exists := ctx.Get("Username")
+	userID, exists := ctx.Get("UserID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	// 类型断言
-	usernameStr, ok := usernameVal.(string)
+	// 类型断言检查
+	uid, ok := userID.(uint)
 	if !ok {
-		log.Println("username type assertion failed")
+		log.Println("error: uid is not uint")
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
 		return
 	}
+
 	// 数据库查询取数据
 	var user models.User
-	err := global.Db.Where("username = ?", usernameStr).First(&user).Error
+	err := global.Db.Where("id = ?", uid).First(&user).Error
 
 	// 数据库出错
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -40,7 +41,7 @@ func Info(ctx *gin.Context) {
 
 	// 用户不存在
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid userID"})
 		return
 	}
 

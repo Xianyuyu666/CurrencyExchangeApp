@@ -91,7 +91,7 @@ func Login(ctx *gin.Context) {
 
 	// 用户存在且密码正确
 	// 生成Token令牌给客户端，用于后续HTTP请求身份认证
-	token, err := utils.GenerateJWT(user.Username)
+	token, err := utils.GenerateJWT(user.ID)
 	if err != nil {
 		log.Println("utils.GenerateJWT error:", err.Error())
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})

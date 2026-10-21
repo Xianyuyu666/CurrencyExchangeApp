@@ -36,7 +36,7 @@ func JWTAuth() gin.HandlerFunc {
 		}
 
 		// 取出载荷信息,放行
-		ctx.Set("Username", jwtclaims.Username)
+		ctx.Set("UserID", jwtclaims.UserID)
 		ctx.Next()
 	}
 }

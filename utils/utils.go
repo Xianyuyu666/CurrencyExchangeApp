@@ -9,7 +9,7 @@ import (
 )
 
 type JWTClaims struct {
-	Username string `json:"username"`
+	UserID uint `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
@@ -26,10 +26,10 @@ func CheckPassword(hashedPwd, plainPwd string) bool {
 }
 
 // GenerateJWT 生成JWT Token密钥：用于HTTP请求身份认证
-func GenerateJWT(username string) (string, error) {
+func GenerateJWT(userID uint) (string, error) {
 	// 填入Claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, JWTClaims{
-		Username:  username,
+		UserID:    userID,
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(config.AppConfig.Jwt.ExpireHours) * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	})
