@@ -183,6 +183,19 @@ POST /api/exchangerate/add
 | 请求体不合法 | 400 | `{"error": "invalid request body"}` |
 | 已存在 | 409 | `{"error": "exchange rate already exists"}` |
 
+### 5.查询汇率
+
+```
+GET /api/exchangerate/query?from=...&to=...&date=...
+```
+
+| 场景 | 状态码 | 响应 |
+|---|---|---|
+|查询成功|200|`{"from_currency": "USD", "to_currency": ...`
+|参数不合法|400|`{"error":"invalid query parameters"}`
+|查不到|404|`{"error":"exchange rate not found"}`
+
+
 ## 安全设计
 
 - **密码安全**：bcrypt 加盐哈希（cost=12），数据库不存明文；登录比对用 `CompareHashAndPassword`

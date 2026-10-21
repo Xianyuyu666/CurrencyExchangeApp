@@ -61,3 +61,47 @@ func CreateExchangeRate(ctx *gin.Context) {
 	// 三元组已存在
 	ctx.JSON(http.StatusConflict, gin.H{"error": "exchange rate already exists"})
 }
+
+type rateQuery struct {
+	From string `form:"from" binding:"required"`
+	To   string `form:"to" binding:"required"`
+	Date string `form:"date" binding:"required"`
+}
+
+// Query 查询汇率HandlerFunc
+func Query(ctx *gin.Context) {
+	// 获取URL查询参数
+	var req rateQuery
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid query parameters"})
+		return
+	}
+
+	// 统一大写
+	from := strings.ToUpper(req.From)
+	to := strings.ToUpper(req.To)
+
+	// 数据库查询
+	var rate models.ExchangeRate
+	err := global.Db.Where("from_currency = ? AND to_currency = ? AND date = ?", from, to, req.Date).First(&rate).Error
+
+	// 没查到
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "exchange rate not found"})
+		return
+	}
+	// 数据库出错
+	if err != nil {
+		log.Println("Db.Where error:", err.Error())
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+		return
+	}
+	// 查到
+	ctx.JSON(http.StatusOK, gin.H{
+		"from_currency": rate.FromCurrency,
+		"to_currency":   rate.ToCurrency,
+		"rate":          rate.Rate,
+		"date":          rate.Date,
+	})
+
+}
