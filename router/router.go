@@ -34,6 +34,7 @@ func SetupRouter() *gin.Engine {
 	article := r.Group("api/article")
 	{
 		article.POST("/create", middleware.JWTAuth(), controllers.CreateArticle)
+		article.GET("", controllers.ListArticles)
 	}
 
 	return r

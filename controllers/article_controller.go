@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type articleReq struct {
@@ -47,4 +48,57 @@ func CreateArticle(ctx *gin.Context) {
 	}
 	// 创建成功,返回创建结果
 	ctx.JSON(http.StatusOK, gin.H{"message": "Create Success", "id": article.ID})
+}
+
+type articleListQuery struct {
+	Keyword  string `form:"keyword"`
+	Page     int    `form:"page"`
+	PageSize int    `form:"pagesize"`
+}
+
+// ListArticles 分页展示文章列表，支持keyword模糊查询
+func ListArticles(ctx *gin.Context) {
+	// 获取URL查询参数
+	var req articleListQuery
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid query parameters"})
+		return
+	}
+
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 || req.PageSize > 100 {
+		req.PageSize = 10
+	}
+
+	// 数据库查询
+	// 动态调节查询条件先取出表
+	db := global.Db.Model(&models.Article{})
+	if req.Keyword != "" {
+		db = db.Where("title LIKE ?", "%"+req.Keyword+"%")
+	}
+	// 总数
+	var total int64
+	db.Count(&total)
+
+	// 数据库查询
+	var list []models.Article
+	err := db.Preload("Author", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id, username")
+	}).
+		Limit(req.PageSize).
+		Offset((req.Page - 1) * req.PageSize).
+		Order("created_at DESC").
+		Find(&list).Error
+
+	if err != nil {
+		log.Println("Db.Find error:", err.Error())
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+		return
+	}
+
+	// 成功返回文章全部信息，关联的用户信息只有id和username，再返回一个查到文章总数
+	ctx.JSON(http.StatusOK, gin.H{"list": list, "total": total})
 }
