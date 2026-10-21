@@ -12,18 +12,18 @@ import (
 	"gorm.io/gorm"
 )
 
-type Req struct {
+type userReq struct {
 	Username string `json:"username" binding:"required,min=3,max=20"`
 	Password string `json:"password" binding:"required,min=6"`
 }
 
 // Register 用户注册HandlerFunc
 func Register(ctx *gin.Context) {
-	var req Req
+	var req userReq
 	// 获取请求体信息
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Println("ShouldBindJSON error", err.Error())
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "server error"})
+		log.Println("ShouldBindJSON error:", err.Error())
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
@@ -64,11 +64,11 @@ func Register(ctx *gin.Context) {
 
 // Login 用户登录HandlerFunc
 func Login(ctx *gin.Context) {
-	var req Req
+	var req userReq
 	// 获取请求体信息
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		log.Println("ShouldBindJSON error:", err.Error())
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "server error"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
@@ -98,44 +98,4 @@ func Login(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"token": token, "message": "Login Success"})
-}
-
-// Info 用户获取自身信息HandleFunc
-func Info(ctx *gin.Context) {
-	// 获取用户信息
-	usernameVal, exists := ctx.Get("Username")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	// 类型断言
-	usernameStr, ok := usernameVal.(string)
-	if !ok {
-		log.Println("username type assertion failed")
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
-		return
-	}
-	// 数据库查询取数据
-	var user models.User
-	err := global.Db.Where("username = ?", usernameStr).First(&user).Error
-
-	// 数据库出错
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		log.Println("Db.Where error", err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
-		return
-	}
-
-	// 用户不存在
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username"})
-		return
-	}
-
-	// 发送到客户端,只能发送安全字段，注意敏感字段
-	ctx.JSON(http.StatusOK, gin.H{
-		"username":  user.Username,
-		"createdAt": user.CreatedAt,
-	})
 }

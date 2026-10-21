@@ -36,8 +36,11 @@ func initDB() {
 	}
 
 	// 数据库自动建表
-	if err := db.AutoMigrate(&models.User{});err != nil{
-		log.Fatalf("AutoMigrate error: %v",err)
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		log.Fatalf("AutoMigrate User error: %v", err)
+	}
+	if err := db.AutoMigrate(&models.ExchangeRate{}); err != nil {
+		log.Fatalf("AutoMigrate ExchangeRate error: %v", err)
 	}
 
 	// 将GORM实列挂到全局变量，供其他模块使用
