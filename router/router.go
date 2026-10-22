@@ -36,6 +36,7 @@ func SetupRouter() *gin.Engine {
 		article.POST("/create", middleware.JWTAuth(), controllers.CreateArticle)
 		article.GET("", controllers.ListArticles)
 		article.GET("/:id", controllers.GetArticle)
+		article.POST("/:id/like", middleware.JWTAuth(), controllers.LikeArticle)
 	}
 
 	return r

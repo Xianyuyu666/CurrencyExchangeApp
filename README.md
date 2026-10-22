@@ -288,6 +288,32 @@ GET /api/article/:id
 | 文章不存在 | 404 | `{"error": "article not found"}` |
 | 服务器内部异常 | 500 | `{"error": "server error"}` |
 
+### 9. 文章点赞 / 取消点赞（需登录）
+
+```
+POST /api/article/:id/like
+```
+
+请求头：
+
+```
+Authorization: Bearer eyJhbGci...
+```
+
+功能：**切换式**——未点赞时调用 = 点赞；已点赞时调用 = 取消点赞。同一个接口点两次回到原状态。
+
+| 场景 | 状态码 | 响应 |
+|---|---|---|
+| 点赞成功 | 200 | `{"liked": true, "like_count": 4}` |
+| 取消点赞 | 200 | `{"liked": false, "like_count": 3}` |
+| id 不合法 | 400 | `{"error": "invalid id"}` |
+| 文章不存在 | 404 | `{"error": "article not found"}` |
+| 未携带 token | 401 | `{"error": "missing token"}` |
+| token 格式错误 | 401 | `{"error": "invalid token format"}` |
+| token 无效 / 过期 | 401 | `{"error": "invalid or expired token"}` |
+| 服务器内部异常 | 500 | `{"error": "server error"}` |
+
+> `liked` 表示当前用户对该文章是否处于点赞状态；`like_count` 为文章最新总赞数（点赞记录表唯一索引防重复，计数用数据库原子表达式更新防并发丢失）。
 
 ## 安全设计
 

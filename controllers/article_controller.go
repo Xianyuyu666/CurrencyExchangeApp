@@ -138,8 +138,98 @@ func GetArticle(ctx *gin.Context) {
 		"id":         article.ID,
 		"title":      article.Title,
 		"content":    article.Content,
-		"likecount":  article.LikeCount,
+		"like_count": article.LikeCount,
 		"author":     article.Author,
 		"created_at": article.CreatedAt,
 	})
+}
+
+// LikeArticle 文章点赞（需登录）
+func LikeArticle(ctx *gin.Context) {
+	// 获取鉴权用户信息
+	userID, exists := ctx.Get("UserID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	// 类型断言
+	uid, ok := userID.(uint)
+	if !ok {
+		log.Println("uid id not uint")
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+		return
+	}
+	// 从URL获取文章id
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	// 数据库查询文章是否存在
+	var article models.Article
+	err = global.Db.First(&article, id).Error
+	// 不存在
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "article not found"})
+		return
+	}
+	// 数据库出错
+	if err != nil {
+		log.Println("Db.First error:", err.Error())
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+		return
+	}
+	// 文章存在
+	// 查点赞记录，二元组
+	var like models.ArticleLike
+	err = global.Db.Where("user_id = ? AND article_id = ?", uid, id).First(&like).Error
+
+	liked := true
+	// 未赞，创建点赞，原子计数+1
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = global.Db.Create(&models.ArticleLike{UserID: uid, ArticleID: uint(id)}).Error
+		if err != nil {
+			log.Println("Db.Create error:", err.Error())
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+			return
+		}
+		err = global.Db.Model(&article).Where("id = ?", id).Update("like_count", gorm.Expr("like_count + 1")).Error
+		if err != nil {
+			log.Println("Db.Update error:", err.Error())
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+			return
+		}
+	} else if err != nil {
+		// 数据库错误
+		log.Println("Db.Where error:", err.Error())
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+		return
+	} else {
+		// 已赞，删除点赞，原子计数-1
+		liked = false
+		err = global.Db.Unscoped().Where("id = ?", like.ID).Delete(&models.ArticleLike{}).Error
+		if err != nil {
+			log.Println("Db.Delete error:", err.Error())
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+			return
+		}
+		// 防止点赞负数
+		err = global.Db.Model(&article).Where("id = ? AND like_count > 0", id).Update("like_count", gorm.Expr("like_count - 1")).Error
+		if err != nil {
+			log.Println("Db.Update error:", err.Error())
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+			return
+		}
+	}
+
+	// 返回当前用户点赞状态和文章总点赞数
+	err = global.Db.Where("id = ?", id).First(&article).Error
+	if err != nil {
+		log.Println("Db.First error:", err.Error())
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "server error"})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"liked": liked, "like_count": article.LikeCount})
 }
